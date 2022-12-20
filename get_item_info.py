@@ -11,7 +11,7 @@ from config import CLIENT_ME
 REQUEST_URL = 'https://app.rakuten.co.jp/'\
 'services/api/IchibaItem/Search/20170706'
 WANT_ITEMS = [
-    'itemName',         # 商品名
+    'itemCaption',      # JAN
     'itemPrice',        # 価格
     'itemUrl'           # 商品url
     # 'postageFlag'  送料フラグ 0->全て,1->送料込み
@@ -27,7 +27,7 @@ path_output_dir = f'./output/{this_date}'
 
 # リクエストを送る際のパラメータをdict型で書く
 req_params = {
-    'applicationId':CLIENT_ME['APPLICATION_ID'],    # 楽天の開発者向けページで取得したアプリID
+    'applicationId':'1072507588405161320',    # 楽天の開発者向けページで取得したアプリID
     'format':'json',        # 
     'formatVersion':'2',    # 
     'keyword':'',           # 検索したい文字列を指定

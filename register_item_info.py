@@ -5,7 +5,7 @@ import csv
 # MySQLの操作
 import mysql.connector
 
-#自分のローカルのMysqlへの接続　passwdには先ほど設定したrootのパスを入力
+# 自分のローカルのMysqlへの接続
 connect = mysql.connector.connect(
     user='root',
     password='',
