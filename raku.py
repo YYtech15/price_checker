@@ -21,21 +21,46 @@ WANT_ITEMS = [
 
 MAX_PAGE = 5
 HITS_PER_PAGE = 30
-# リクエストを送る際のパラメータをdict型で書く
-req_params = {
-    'applicationId':appId,    # 楽天の開発者向けページで取得したアプリID
-    'format':'json',        # 
-    'formatVersion':'2',    # 
+
+# getでリクエストを送る際のパラメータをdict型で書く
+req_params_get = {
+    'applicationId':appId,  # 楽天の開発者向けページで取得したアプリID
+    'format':'json',        # JSONを指定
+    'formatVersion':'2',    # formatVersion=2 を設定すると、レスポンスフォーマット（JSON）が改善される。
     'keyword':'',           # 検索したい文字列を指定
-    'hits':HITS_PER_PAGE,   # 
-    'sort':'+itemPrice',    # 
+    'hits': HITS_PER_PAGE,  # 各ページに表示する結果の数
+    'sort':'+itemPrice',    # 昇順の商品価格でソート
     'page':0,               # 取得するページ　->　ループを回すことで複数ページの商品情報取得可
-    'minPrice':100          # 
 }
 
+'''
+    In case of formatVersion=2 :
+    Our API response will be returned in Array format as the followings.
+    You can use notation items[0].itemName
+    To access itemName parameter.
+'''
+
+# searchでリクエストを送る際のパラメータをdict型で書く
+req_params_search = {
+    'applicationId':appId,
+    'format':'json',
+    'formatVersion':'2',
+    'keyword':'',
+    'hits': HITS_PER_PAGE,
+    'sort':'-reviewAverage',    # 高評価順にソート
+    'page':0,
+}
 
 # 検索データ取得
-def get_keyword():
+def get_Rakuten(*Jan_code: str):
+    result = dict()
+
+    for j in Jan_code:
+        if len(j) != 8 and len(j) != 13:
+            result[j] = {"status": False}
+            continue
+        res = requests.get(REQUEST_URL, req_params_get)
+        data = res.json()
 
     #商品記載テキストファイルからキーワード配列作成
     with open('.\list_item_name.txt','r',encoding='utf-8') as f:
@@ -45,51 +70,44 @@ def get_keyword():
     search_Rakuten(item_info)
 
 # 楽天のデータ検索
-def search_Rakuten(arg_item_info):
+# keywordは最大128文字の１バイト文字
+def search_Rakuten(keyword: str):
 
-    #キーワードループ
-    for keyword in arg_item_info:
+    # 検索ワード
+    keyword = keyword.replace('\u3000',' ')
+    req_params_search['keyword'] = keyword
+    df = pd.DataFrame(columns=WANT_ITEMS)
 
-        #初期設定
-        keyword = keyword.replace('\u3000',' ')
-        req_params['keyword'] = keyword
-        df = pd.DataFrame(columns=WANT_ITEMS)
+    # APIを実行してreq_paramsのデータを取得
+    res = requests.get(REQUEST_URL,req_params_search)
+    response_code = res.status_code             # ステータスコード取得
+    data = res.json()                           # jsonにデコードする
+    result = dict()                             # 整形した結果を格納する辞書変数を宣言
 
-        # APIを実行してreq_paramsのデータを取得
-        res = requests.get(REQUEST_URL,req_params)
-        response_code = res.status_code             # ステータスコード取得
-        data = res.json()                           # jsonにデコードする
-        result = list()
-
-        for d in data["hits"]:
-            if d["janCode"]=="":
-                continue
+    if response_code != 200:
+        # エラー出力
+        print(f"ErrorCode --> {response_code}\nError --> {data['error']}")
+    else:
+        #返ってきた商品数の数が0の場合はデータなし
+        for d in data['hits']:
             item = {
                 "status": True,
-                "name": d["name"],
-                "price": d["price"],
-                "janCode":d["janCode"],
-                "url": d["url"],
-                "image": d["image"]["medium"],
-                "seller": d["seller"]["name"],
-                "shipping": d["shipping"]["name"]
+                'itemName' : d['itemName'],
+                'itemPrice' : d['itemPrice'],
+                'itemUrl' : d['itemUrl'],
+                'shopName' : d['shopName'],
+                'itemCaption' : d['itemCaption'],
+                'postageFlag' : d['postageFlag']
             }
             result.append(item)
-
-        if response_code != 200:
-            # エラー出力
-            print(f"ErrorCode --> {response_code}\nError --> {result['error']}")
-        else:
-            #返ってきた商品数の数が0の場合は終了
-            if result['hits'] == 0:
-                return
-
-        tmp_df = pd.DataFrame(result['Items'])[WANT_ITEMS]
-        df = pd.concat([df,tmp_df],ignore_index=True)
-
         #リクエスト制限回避
         sleep(1)
         return result
+
+    tmp_df = pd.DataFrame(result['Items'])[WANT_ITEMS]
+    df = pd.concat([df,tmp_df],ignore_index=True)
+
+    return result
 
 if __name__ == '__main__':
     janCodes = list()
