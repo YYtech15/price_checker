@@ -2,3 +2,4 @@ database.json
 example*
 __pycache__
 config.*
+!config.py
