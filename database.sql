@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS `user` (
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB
 ;
-CREATE TABLE `token` (
+CREATE TABLE IF NOT EXISTS `token` (
 	`id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
 	`token` TINYTEXT NOT NULL COLLATE 'utf8mb4_general_ci',
 	`user_id` INT(10) UNSIGNED NOT NULL,
@@ -24,3 +24,25 @@ CREATE TABLE `token` (
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB
 ;
+CREATE TABLE `registerd_items` (
+	`user_id` INT(11) UNSIGNED NOT NULL,
+	`item_code` TINYTEXT NOT NULL COLLATE 'utf8mb4_general_ci',
+	INDEX `FK__user` (`user_id`) USING BTREE,
+	CONSTRAINT `FK__user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+)
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB
+;
+CREATE TABLE `item_information` (
+	`item_code` TINYTEXT NOT NULL COLLATE 'utf8mb4_general_ci',
+	`name` TINYTEXT NOT NULL COLLATE 'utf8mb4_general_ci',
+	`price` INT(11) NOT NULL,
+	`url` TEXT NOT NULL COLLATE 'utf8mb4_general_ci',
+	`image_url` TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	`seller` TINYTEXT NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	`shipping` TINYTEXT NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci'
+)
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB
+;
+
