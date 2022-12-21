@@ -21,6 +21,13 @@ database = PooledDB(pymysql, 4, **database_config)
 
 yahoo = Yahoo(config["Yahoo_App_ID"])
 
+# Example request body
+# {
+#    "janCode": <janCode:str>
+# }
+#
+# Example response body
+#{"status": True}
 
 @app.route("/add", methods=["POST"])
 def add_item():
@@ -38,6 +45,14 @@ def add_item():
         print(e)
         return {"status": False, "msg": "missing information"}
 
+
+# Example request body
+# {
+#    "janCode": <janCode:str>
+# }
+#
+# Example response body
+#{"status": True}
 
 @ app.route("/remove", methods=["POST"])
 def remove_item():
@@ -115,8 +130,8 @@ def search_items():
 
 # Example request body
 # {
-#    "address": id,
-#    "pass": pass
+#    "address": <email_address:str>,
+#    "pass": <password:str>
 # }
 #
 # Example response body
@@ -139,12 +154,12 @@ def register():
 
 # Example request body
 # {
-#    "address": id,
-#    "pass": pass
+#    "address": <email_address:str>,
+#    "pass": <password:str>
 # }
 #
 # Example response body
-#{"status": True, "token": token}
+#{"status": True, "token": <token:str>}
 
 @ app.route("/login", methods=["POST"])
 def login():
@@ -182,6 +197,7 @@ def robot():
 
 def check_header(header: dict):
     # デバッグ用なので削除必須
+    # use debug
     return 1
     try:
         token = header["Authorization"].split(" ").pop()
