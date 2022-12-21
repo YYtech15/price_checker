@@ -7,14 +7,19 @@ import bcrypt
 import datetime
 import json
 
+import Yahoo
+
 app = Flask(__name__)
 
-with open("database.json", "r") as f:
+with open("config.json", "r") as f:
     config = json.load(f)
-config["autocommit"] = False
-config["cursorclass"] = pymysql.cursors.DictCursor
+database_config= config["database"]
+database_config["autocommit"] = False
+database_config["cursorclass"] = pymysql.cursors.DictCursor
 
-database = PooledDB(pymysql, 4, **config)
+database = PooledDB(pymysql, 4, **database_config)
+
+Yahoo.set_appId(config["Yahoo_App_ID"])
 
 
 @app.route("/add", methods=["POST"])
@@ -54,7 +59,21 @@ def get_items():
     sql = "".format(user_id)
     with database.connection().cursor() as cur:
         cur.execute(sql)
+        data = cur.fetchone()
     return {"status": True}
+
+@app.route("/search",methods=["GET"])
+def search_items():
+    user_id = check_header(request.headers)
+    if not user_id:
+        return {"status": False, "msg": "need login"}
+    keyword =request.args.get('q')
+    if keyword:
+        Y_data = Yahoo.search_yahoo(keyword)
+        return {"status":True,"items":Y_data}
+    else:
+        return {"status": False, "msg": "missing prameter"}
+        
 
 # Example request body
 # {
@@ -70,7 +89,7 @@ def get_items():
 def register():
     data = request.get_json()
     if not (data["address"] and data["pass"]):
-        return {"status": False}
+        return {"status": False, "msg": "missing data"}
     salt = bcrypt.gensalt()
     hash = bcrypt.hashpw(data["pass"].encode(), salt).decode()
     sql = "INSERT INTO user(address,pass) values('{}','{}')".format(
@@ -173,4 +192,4 @@ def random_name(n: int):
 
 
 if __name__ == "__main__":
-    app.run(port=9000, debug=True)
+    app.run(port=9002, debug=True)
