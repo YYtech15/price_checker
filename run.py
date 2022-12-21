@@ -51,16 +51,34 @@ def remove_item():
     return {"status": True}
 
 
+# Example response body
+# {
+#  "status" : <process_status:bool>,
+#  "items": [
+#    {
+#      "image": <image_url:str>,
+#      "janCode": <jan_code:str>,
+#      "name": <product_name:str>,
+#      "price": <product_price:int>,
+#      "seller": <seller_name:str>,
+#      "shipping": <shipping_plan:str>,
+#      "url": <item_page_url:str>
+#    }
+#  ]
+#}
 @app.route("/info", methods=["GET"])
 def get_items():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    sql = "".format(user_id)
+    sql = """SELECT *
+            FROM registerd_items
+            LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
+            WHERE registerd_items.user_id = {}""".format(user_id)
     with database.connection().cursor() as cur:
         cur.execute(sql)
-        data = cur.fetchone()
-    return {"status": True}
+        data = cur.fetch()
+    return {"status": True,"items":data}
 
 
 # Request query paramater
