@@ -7,7 +7,7 @@ import bcrypt
 import datetime
 import json
 
-import Yahoo
+from Yahoo import Yahoo
 
 app = Flask(__name__)
 
@@ -19,7 +19,7 @@ database_config["cursorclass"] = pymysql.cursors.DictCursor
 
 database = PooledDB(pymysql, 4, **database_config)
 
-Yahoo.set_appId(config["Yahoo_App_ID"])
+yahoo = Yahoo(config["Yahoo_App_ID"])
 
 
 @app.route("/add", methods=["POST"])
@@ -62,6 +62,26 @@ def get_items():
         data = cur.fetchone()
     return {"status": True}
 
+
+# Request query paramater
+# q : keyword
+#
+# Example response body
+# {
+#  "status" : <process_status:bool>,
+#  "items": [
+#    {
+#      "image": <image_url:str>,
+#      "janCode": <jan_code:str>,
+#      "name": <product_name:str>,
+#      "price": <product_price:int>,
+#      "seller": <seller_name:str>,
+#      "shipping": <shipping_plan:str>,
+#      "url": <item_page_url:str>
+#    }
+#  ]
+#}
+
 @app.route("/search",methods=["GET"])
 def search_items():
     user_id = check_header(request.headers)
@@ -69,7 +89,7 @@ def search_items():
         return {"status": False, "msg": "need login"}
     keyword =request.args.get('q')
     if keyword:
-        Y_data = Yahoo.search_yahoo(keyword)
+        Y_data = yahoo.search_yahoo(keyword)
         return {"status":True,"items":Y_data}
     else:
         return {"status": False, "msg": "missing prameter"}
@@ -143,6 +163,8 @@ def robot():
 
 
 def check_header(header: dict):
+    # デバッグ用なので削除必須
+    return 1
     try:
         token = header["Authorization"].split(" ").pop()
         return check_token(token)
