@@ -22,7 +22,7 @@ database = PooledDB(pymysql, 4, **database_config)
 yahoo = Yahoo(config["Yahoo_App_ID"])
 
 
-#cors許可
+# cors許可
 @app.after_request
 def after_request(response):
     if config["Access-Control-Allow-Origin"]:
@@ -100,7 +100,7 @@ def get_items():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    sql = """SELECT *
+    sql = """SELECT registerd_items.item_code,item_information.name,item_information.price,item_information.url,item_information.image,item_information.seller,item_information.shipping
             FROM registerd_items
             LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
             WHERE registerd_items.user_id = {}""".format(user_id)
@@ -197,6 +197,8 @@ def login():
 
 # Example response body
 # {"status": True}
+
+
 @ app.route("/check")
 def check_login():
     user_id = check_token(request.headers)
@@ -214,7 +216,8 @@ def check_header(header: dict):
     try:
         token = header["Authorization"].split(" ").pop()
         return check_token(token)
-    except:
+    except Exception as e:
+        print(e)
         return False
 
 
@@ -257,6 +260,36 @@ def user_search(token: str):
 
 def random_name(n: int):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
+
+
+class Crawler():
+    def __init__(self) -> None:
+        self.end_flag = False
+
+    def __del__(self):
+        self.end_flag = True
+
+    def start(self):
+        while True:
+            if (self.end_flag):
+                break
+            self.update()
+
+    def stop(self):
+        self.end_flag = True
+
+    def update(self):
+        cur = database.connection().cursor()
+        cur.execute("SELECT item_code FROM item_information")
+        data = cur.fetchall()
+        for d in data:
+            res = yahoo.get(d["item_code"])
+            print(res[d["item_code"]],d)
+            sql = """UPDATE item_information SET 
+            name = '{name}',price={price},url='{url}',image='{image}',seller='{seller}',shipping='{shipping}'
+            where item_code={item_code}""".format(**res[d["item_code"]],**d)
+            print(sql)
+            cur.execute(sql)
 
 
 if __name__ == "__main__":
