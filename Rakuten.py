@@ -5,7 +5,6 @@ import numpy as np
 # APIを叩く用 ： request
 import requests,json,datetime,os,re
 from time import sleep
-from config import CLIENT_ME
 
 # リクエストするURL()
 REQUEST_URL = 'https://app.rakuten.co.jp/'\
@@ -44,7 +43,7 @@ def main():
         os.mkdir(path_output_dir)
 
     #商品記載テキストファイルからキーワード配列作成
-    with open('.\list_item_name.txt','r',encoding='utf-8') as f:
+    with open('.\item.txt','r',encoding='utf-8') as f:
         # 改行ごとに読み取る
         item_info = list(map(str,f.read().split('\n')))
 
