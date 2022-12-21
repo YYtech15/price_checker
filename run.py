@@ -1,12 +1,20 @@
+# 主要ライブラリ
 from flask import Flask, render_template, request, redirect, make_response
+
+# 外部ライブラリ
+import bcrypt
 import pymysql
 from dbutils.pooled_db import PooledDB
+
+# 組み込みライブラリ
 import random
 import string
-import bcrypt
 import datetime
 import json
+import threading
+from time import sleep
 
+# 自作モジュール
 from Yahoo import Yahoo
 
 app = Flask(__name__)
@@ -263,20 +271,32 @@ def random_name(n: int):
 
 
 class Crawler():
-    def __init__(self) -> None:
-        self.end_flag = False
+    def __init__(self,Interval:int):
+        self.Interval = Interval
 
     def __del__(self):
         self.end_flag = True
+        self.thread.join()
 
     def start(self):
-        while True:
-            if (self.end_flag):
-                break
-            self.update()
+        self.end_flag = False
+        self.previous_time = datetime.datetime.today()-datetime.timedelta(minutes=60)
+        self.thread = threading.Thread(target=self.loop)
+        self.thread.start()
 
     def stop(self):
         self.end_flag = True
+        self.thread.join()
+
+    def loop(self):
+        while not self.end_flag:
+            if (self.previous_time < datetime.datetime.today()):
+                self.update()
+                self.previous_time = datetime.datetime.today()+datetime.timedelta(minutes=self.Interval)
+            for i in range(30):
+                sleep(2)
+                if self.end_flag:
+                    break
 
     def update(self):
         cur = database.connection().cursor()
@@ -284,13 +304,13 @@ class Crawler():
         data = cur.fetchall()
         for d in data:
             res = yahoo.get(d["item_code"])
-            print(res[d["item_code"]],d)
             sql = """UPDATE item_information SET 
             name = '{name}',price={price},url='{url}',image='{image}',seller='{seller}',shipping='{shipping}'
-            where item_code={item_code}""".format(**res[d["item_code"]],**d)
-            print(sql)
+            where item_code={item_code}""".format(**res[d["item_code"]], **d)
             cur.execute(sql)
 
 
+crawler = Crawler(60)
 if __name__ == "__main__":
+    crawler.start()
     app.run(port=9002, debug=True)
