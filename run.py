@@ -21,6 +21,15 @@ database = PooledDB(pymysql, 4, **database_config)
 
 yahoo = Yahoo(config["Yahoo_App_ID"])
 
+
+#cors許可
+@app.after_request
+def after_request(response):
+    if config["Access-Control-Allow-Origin"]:
+        response.headers["Access-Control-Allow-Origin"] = config["Access-Control-Allow-Origin"]
+    return response
+
+
 # Example request body
 # {
 #    "item_code": <janCode:str>
@@ -41,7 +50,8 @@ def add_item():
             user_id, post_data["item_code"])
         with database.connection().cursor() as cur:
             cur.execute(sql)
-            sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}}')".format(post_data["item_code"])
+            sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}}')".format(
+                post_data["item_code"])
             cur.execute(sql)
         return {"status": True}
     except Exception as e:
@@ -185,7 +195,8 @@ def login():
         cur.execute(sql)
     return {"status": True, "token": token}
 
-
+# Example response body
+# {"status": True}
 @ app.route("/check")
 def check_login():
     user_id = check_token(request.headers)
