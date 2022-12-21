@@ -64,6 +64,7 @@ class Yahoo:
 
 if __name__ == "__main__":
     jan_codes = list()
+    print("情報取得したい商品のJANコードを入力してください。終了する場合はexitと入力してください。")
     while True:
         code = input("{}番目のJANコードを入力してください: ".format(len(jan_codes)+1))
         if code == "exit":
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     with open("config.json", "r") as f:
         config = json.load(f)
     yahoo = Yahoo(config["Yahoo_App_ID"])
-    res = yahoo.get_yahoo(*jan_codes)
+    res = yahoo.get(*jan_codes)
     
     with open("example.json", "w") as f:
         json.dump(res, f, ensure_ascii=False, indent=4)
