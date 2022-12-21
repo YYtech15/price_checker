@@ -13,8 +13,8 @@ app = Flask(__name__)
 
 with open("config.json", "r") as f:
     config = json.load(f)
-database_config= config["database"]
-database_config["autocommit"] = False
+database_config = config["database"]
+database_config["autocommit"] = True
 database_config["cursorclass"] = pymysql.cursors.DictCursor
 
 database = PooledDB(pymysql, 4, **database_config)
@@ -23,23 +23,26 @@ yahoo = Yahoo(config["Yahoo_App_ID"])
 
 # Example request body
 # {
-#    "janCode": <janCode:str>
+#    "item_code": <janCode:str>
 # }
 #
 # Example response body
 #{"status": True}
+
 
 @app.route("/add", methods=["POST"])
 def add_item():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    post_data = request.get_json()
     try:
-        sql = "".format(post_data["item_id"], user_id)
+        post_data = request.get_json()
+        sql = "INSERT INTO registerd_items(user_id,item_code) VALUES({},{})".format(
+            user_id, post_data["item_code"])
         with database.connection().cursor() as cur:
             cur.execute(sql)
-            cur.commit()
+            sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}}')".format(post_data["item_code"])
+            cur.execute(sql)
         return {"status": True}
     except Exception as e:
         print(e)
@@ -48,7 +51,7 @@ def add_item():
 
 # Example request body
 # {
-#    "janCode": <janCode:str>
+#    "item_code": <janCode:str>
 # }
 #
 # Example response body
@@ -60,7 +63,8 @@ def remove_item():
     if not user_id:
         return {"status": False, "msg": "need login"}
     post_data = request.get_json()
-    sql = "".format(post_data["item_id"], user_id)
+    sql = "DELETE FROM registerd_items where item_code={} and user_id={}".format(
+        post_data["item_code"], user_id)
     with database.connection().cursor() as cur:
         cur.execute(sql)
     return {"status": True}
@@ -80,7 +84,7 @@ def remove_item():
 #      "url": <item_page_url:str>
 #    }
 #  ]
-#}
+# }
 @app.route("/info", methods=["GET"])
 def get_items():
     user_id = check_header(request.headers)
@@ -92,8 +96,8 @@ def get_items():
             WHERE registerd_items.user_id = {}""".format(user_id)
     with database.connection().cursor() as cur:
         cur.execute(sql)
-        data = cur.fetch()
-    return {"status": True,"items":data}
+        data = cur.fetchall()
+    return {"status": True, "items": data}
 
 
 # Request query paramater
@@ -113,20 +117,20 @@ def get_items():
 #      "url": <item_page_url:str>
 #    }
 #  ]
-#}
+# }
 
-@app.route("/search",methods=["GET"])
+@app.route("/search", methods=["GET"])
 def search_items():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    keyword =request.args.get('q')
+    keyword = request.args.get('q')
     if keyword:
         Y_data = yahoo.search(keyword)
-        return {"status":True,"items":Y_data}
+        return {"status": True, "items": Y_data}
     else:
         return {"status": False, "msg": "missing prameter"}
-        
+
 
 # Example request body
 # {
@@ -159,7 +163,7 @@ def register():
 # }
 #
 # Example response body
-#{"status": True, "token": <token:str>}
+# {"status": True, "token": <token:str>}
 
 @ app.route("/login", methods=["POST"])
 def login():
@@ -186,8 +190,8 @@ def login():
 def check_login():
     user_id = check_token(request.headers)
     if user_id:
-        return user_id
-    return ""
+        return {"status": True}
+    return {"status": False}
 
 
 @ app.route("/robots.txt")
@@ -196,9 +200,6 @@ def robot():
 
 
 def check_header(header: dict):
-    # デバッグ用なので削除必須
-    # use debug
-    return 1
     try:
         token = header["Authorization"].split(" ").pop()
         return check_token(token)
