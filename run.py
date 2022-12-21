@@ -7,14 +7,36 @@ import bcrypt
 import datetime
 import json
 
+from Yahoo import Yahoo
+
 app = Flask(__name__)
 
-with open("database.json", "r") as f:
+with open("config.json", "r") as f:
     config = json.load(f)
-config["autocommit"] = False
-config["cursorclass"] = pymysql.cursors.DictCursor
+database_config = config["database"]
+database_config["autocommit"] = True
+database_config["cursorclass"] = pymysql.cursors.DictCursor
 
-database = PooledDB(pymysql, 4, **config)
+database = PooledDB(pymysql, 4, **database_config)
+
+yahoo = Yahoo(config["Yahoo_App_ID"])
+
+
+#cors許可
+@app.after_request
+def after_request(response):
+    if config["Access-Control-Allow-Origin"]:
+        response.headers["Access-Control-Allow-Origin"] = config["Access-Control-Allow-Origin"]
+    return response
+
+
+# Example request body
+# {
+#    "item_code": <janCode:str>
+# }
+#
+# Example response body
+#{"status": True}
 
 
 @app.route("/add", methods=["POST"])
@@ -22,17 +44,28 @@ def add_item():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    post_data = request.get_json()
     try:
-        sql = "".format(post_data["item_id"], user_id)
+        post_data = request.get_json()
+        sql = "INSERT INTO registerd_items(user_id,item_code) VALUES({},{})".format(
+            user_id, post_data["item_code"])
         with database.connection().cursor() as cur:
             cur.execute(sql)
-            cur.commit()
+            sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}}')".format(
+                post_data["item_code"])
+            cur.execute(sql)
         return {"status": True}
     except Exception as e:
         print(e)
         return {"status": False, "msg": "missing information"}
 
+
+# Example request body
+# {
+#    "item_code": <janCode:str>
+# }
+#
+# Example response body
+#{"status": True}
 
 @ app.route("/remove", methods=["POST"])
 def remove_item():
@@ -40,26 +73,79 @@ def remove_item():
     if not user_id:
         return {"status": False, "msg": "need login"}
     post_data = request.get_json()
-    sql = "".format(post_data["item_id"], user_id)
+    sql = "DELETE FROM registerd_items where item_code={} and user_id={}".format(
+        post_data["item_code"], user_id)
     with database.connection().cursor() as cur:
         cur.execute(sql)
     return {"status": True}
 
 
+# Example response body
+# {
+#  "status" : <process_status:bool>,
+#  "items": [
+#    {
+#      "image": <image_url:str>,
+#      "janCode": <jan_code:str>,
+#      "name": <product_name:str>,
+#      "price": <product_price:int>,
+#      "seller": <seller_name:str>,
+#      "shipping": <shipping_plan:str>,
+#      "url": <item_page_url:str>
+#    }
+#  ]
+# }
 @app.route("/info", methods=["GET"])
 def get_items():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    sql = "".format(user_id)
+    sql = """SELECT *
+            FROM registerd_items
+            LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
+            WHERE registerd_items.user_id = {}""".format(user_id)
     with database.connection().cursor() as cur:
         cur.execute(sql)
-    return {"status": True}
+        data = cur.fetchall()
+    return {"status": True, "items": data}
+
+
+# Request query paramater
+# q : keyword
+#
+# Example response body
+# {
+#  "status" : <process_status:bool>,
+#  "items": [
+#    {
+#      "image": <image_url:str>,
+#      "janCode": <jan_code:str>,
+#      "name": <product_name:str>,
+#      "price": <product_price:int>,
+#      "seller": <seller_name:str>,
+#      "shipping": <shipping_plan:str>,
+#      "url": <item_page_url:str>
+#    }
+#  ]
+# }
+
+@app.route("/search", methods=["GET"])
+def search_items():
+    user_id = check_header(request.headers)
+    if not user_id:
+        return {"status": False, "msg": "need login"}
+    keyword = request.args.get('q')
+    if keyword:
+        Y_data = yahoo.search(keyword)
+        return {"status": True, "items": Y_data}
+    else:
+        return {"status": False, "msg": "missing prameter"}
+
 
 # Example request body
 # {
-#    "address": id,
-#    "pass": pass
+#    "address": <email_address:str>,
+#    "pass": <password:str>
 # }
 #
 # Example response body
@@ -70,7 +156,7 @@ def get_items():
 def register():
     data = request.get_json()
     if not (data["address"] and data["pass"]):
-        return {"status": False}
+        return {"status": False, "msg": "missing data"}
     salt = bcrypt.gensalt()
     hash = bcrypt.hashpw(data["pass"].encode(), salt).decode()
     sql = "INSERT INTO user(address,pass) values('{}','{}')".format(
@@ -82,12 +168,12 @@ def register():
 
 # Example request body
 # {
-#    "address": id,
-#    "pass": pass
+#    "address": <email_address:str>,
+#    "pass": <password:str>
 # }
 #
 # Example response body
-#{"status": True, "token": token}
+# {"status": True, "token": <token:str>}
 
 @ app.route("/login", methods=["POST"])
 def login():
@@ -109,13 +195,14 @@ def login():
         cur.execute(sql)
     return {"status": True, "token": token}
 
-
+# Example response body
+# {"status": True}
 @ app.route("/check")
 def check_login():
     user_id = check_token(request.headers)
     if user_id:
-        return user_id
-    return ""
+        return {"status": True}
+    return {"status": False}
 
 
 @ app.route("/robots.txt")
@@ -173,4 +260,4 @@ def random_name(n: int):
 
 
 if __name__ == "__main__":
-    app.run(port=9000, debug=True)
+    app.run(port=9002, debug=True)
