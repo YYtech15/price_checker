@@ -271,7 +271,7 @@ def random_name(n: int):
 
 
 class Crawler():
-    def __init__(self,Interval:int):
+    def __init__(self, Interval: int):
         self.Interval = Interval
 
     def __del__(self):
@@ -292,7 +292,8 @@ class Crawler():
         while not self.end_flag:
             if (self.previous_time < datetime.datetime.today()):
                 self.update()
-                self.previous_time = datetime.datetime.today()+datetime.timedelta(minutes=self.Interval)
+                self.previous_time = datetime.datetime.today(
+                )+datetime.timedelta(minutes=self.Interval)
             for i in range(30):
                 sleep(2)
                 if self.end_flag:
