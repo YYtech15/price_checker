@@ -1,6 +1,6 @@
 {
     "Rakuten_App_ID" : "1072507588405161320",
-    "Want_Items" : ["itemName", "itemPrice", "itemUrl", "url",  "shopName", "janCode", "postageFlag"],
+    "Want_Items" : ["itemName", "itemPrice", "itemUrl", "url",  "shopName", "itemCaption", "postageFlag"],
     "req_params_get" : [{
         "applicationId": "1072507588405161320",
         "format":"json",
