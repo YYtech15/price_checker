@@ -8,7 +8,7 @@ class Yahoo:
         self.appId=appId
 
 
-    def get_yahoo(self,*JAN_codes: str):
+    def get(self,*JAN_codes: str):
         results = dict()
         for j in JAN_codes:
             if len(j) != 8 and len(j) != 13:
@@ -40,7 +40,7 @@ class Yahoo:
         return results
 
 
-    def search_yahoo(self,query: str):
+    def search(self,query: str):
         url = "https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid={}&query={}".format(
             self.appId, query)
         r = requests.get(url)

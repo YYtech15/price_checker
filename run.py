@@ -122,7 +122,7 @@ def search_items():
         return {"status": False, "msg": "need login"}
     keyword =request.args.get('q')
     if keyword:
-        Y_data = yahoo.search_yahoo(keyword)
+        Y_data = yahoo.search(keyword)
         return {"status":True,"items":Y_data}
     else:
         return {"status": False, "msg": "missing prameter"}
