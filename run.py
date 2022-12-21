@@ -46,11 +46,11 @@ def add_item():
         return {"status": False, "msg": "need login"}
     try:
         post_data = request.get_json()
-        sql = "INSERT INTO registerd_items(user_id,item_code) VALUES({},{})".format(
+        sql = "INSERT INTO registerd_items(user_id,item_code) VALUES({},'{}')".format(
             user_id, post_data["item_code"])
         with database.connection().cursor() as cur:
             cur.execute(sql)
-            sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}}')".format(
+            sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}')".format(
                 post_data["item_code"])
             cur.execute(sql)
         return {"status": True}
