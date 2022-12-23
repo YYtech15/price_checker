@@ -68,7 +68,7 @@ def add_item():
         post_data = request.get_json()
         if not check_code(post_data["item_code"]):
             return {"status": False, "msg": "not a number"}
-        sql = "INSERT INTO registerd_items(user_id,item_code,border_price) VALUES({},'{}')".format(
+        sql = "INSERT INTO registerd_items(user_id,item_code,border_price) VALUES({},'{}',{})".format(
             user_id, post_data["item_code"],post_data["border_price"])
         with database.connection().cursor() as cur:
             cur.execute(sql)
