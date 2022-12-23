@@ -1,12 +1,22 @@
+# 主要ライブラリ
 from flask import Flask, render_template, request, redirect, make_response
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+# 外部ライブラリ
+import bcrypt
 import pymysql
 from dbutils.pooled_db import PooledDB
+
+# 組み込みライブラリ
 import random
 import string
-import bcrypt
 import datetime
 import json
+import threading
+from time import sleep
 
+# 自作モジュール
 from Yahoo import Yahoo
 
 app = Flask(__name__)
@@ -21,8 +31,10 @@ database = PooledDB(pymysql, 4, **database_config)
 
 yahoo = Yahoo(config["Yahoo_App_ID"])
 
+cred = credentials.Certificate(config["GOOGLE_APPLICATION_CREDENTIALS"])
+default_app = firebase_admin.initialize_app()
 
-#cors許可
+# cors許可
 @app.after_request
 def after_request(response):
     if config["Access-Control-Allow-Origin"]:
@@ -33,7 +45,8 @@ def after_request(response):
 
 # Example request body
 # {
-#    "item_code": <janCode:str>
+#    "item_code": <janCode:str>,
+#    "border_price": <border_price:int>
 # }
 #
 # Example response body
@@ -101,7 +114,7 @@ def get_items():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    sql = """SELECT *
+    sql = """SELECT registerd_items.item_code,item_information.name,item_information.price,item_information.url,item_information.image,item_information.seller,item_information.shipping
             FROM registerd_items
             LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
             WHERE registerd_items.user_id = {}""".format(user_id)
@@ -198,12 +211,34 @@ def login():
 
 # Example response body
 # {"status": True}
+
+
 @ app.route("/check")
 def check_login():
-    user_id = check_token(request.headers)
+    user_id = check_header(request.headers)
     if user_id:
         return {"status": True}
     return {"status": False}
+
+
+# Example request body
+# {
+#    "device_token": <device_token:str>
+# }
+#
+# Example response body
+# {"status": True}
+@ app.route("/token_register")
+def token_register():
+    user_id = check_token(request.headers)
+    if not user_id:
+        return {"status": False}
+    data = request.get_json()
+    sql = "INSERT INTO message_token VALUES({},'{}')".format(
+        user_id, data["device_token"])
+    with database.connection().cursor() as cur:
+        cur.execute(sql)
+    return {"status": True}
 
 
 @ app.route("/robots.txt")
@@ -215,7 +250,8 @@ def check_header(header: dict):
     try:
         token = header["Authorization"].split(" ").pop()
         return check_token(token)
-    except:
+    except Exception as e:
+        print(e)
         return False
 
 
@@ -260,5 +296,63 @@ def random_name(n: int):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
 
 
+class Crawler():
+    def __init__(self, Interval: int):
+        self.Interval = Interval
+        self.previous_time = datetime.datetime.today()-datetime.timedelta(minutes=60)
+
+    def __del__(self):
+        self.end_flag = True
+        self.thread.join()
+
+    def start(self):
+        self.end_flag = False
+        self.thread = threading.Thread(target=self.loop)
+        self.thread.start()
+
+    def stop(self):
+        self.end_flag = True
+        self.thread.join()
+
+    def loop(self):
+        while not self.end_flag:
+            if (self.previous_time < datetime.datetime.today()):
+                self.update()
+                self.previous_time = datetime.datetime.today(
+                )+datetime.timedelta(minutes=self.Interval)
+            for i in range(30):
+                sleep(2)
+                if self.end_flag:
+                    break
+
+    def update(self):
+        cur = database.connection().cursor()
+        cur.execute("SELECT item_code FROM item_information")
+        data = cur.fetchall()
+        for d in data:
+            res = yahoo.get(d["item_code"])
+            sql = """UPDATE item_information SET 
+            name = '{name}',price={price},url='{url}',image='{image}',seller='{seller}',shipping='{shipping}'
+            where item_code={item_code}""".format(**res[d["item_code"]], **d)
+            cur.execute(sql)
+        cur.close()
+
+    def notice(self):
+        cur = database.connection().cursor()
+        sql = """SELECT registerd_items.user_id,item_information.name,item_information.price,item_information.url
+                FROM registerd_items
+                LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
+                WHERE registerd_items.border_price >= item_information.price"""
+        cur.execute(sql)
+        sell_items = cur.fetchall()
+        for item in sell_items:
+            sql = "SELECT device_token FROM message_token WHERE user_id={}".format(
+                item["user_id"])
+            cur.execute(sql)
+            tokenArray = filter(lambda x: x["device_token"], cur.fetchall())
+
+
+crawler = Crawler(60)
 if __name__ == "__main__":
+    crawler.start()
     app.run(port=9002, debug=True)
