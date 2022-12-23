@@ -1,101 +1,163 @@
-from ast import keyword
-# 取得したデータ操作とcsv出力のため : pandas
-import pandas as pd
-import numpy as np
 # APIを叩く用 ： request
-import requests,json,datetime,os,re
+import requests,json,re
 from time import sleep
 
-# リクエストするURL()
-REQUEST_URL = 'https://app.rakuten.co.jp/'\
-'services/api/IchibaItem/Search/20170706'
-WANT_ITEMS = [
-    'itemCaption',      # JAN
-    'itemPrice',        # 価格
-    'itemUrl'           # 商品url
-    # 'postageFlag'  送料フラグ 0->全て,1->送料込み
-]
+class Rakuten:
+    def __init__(self, appId:str) -> None:
+        self.appId = appId
 
-MAX_PAGE = 5
-HITS_PER_PAGE = 30
+        # リクエストするURL()
+        self.REQUEST_URL = 'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706'
 
-# 日時指定
-start_time = datetime.datetime.today()
-this_date = format(start_time,'%Y%m%d')
-path_output_dir = f'./output/{this_date}'
+        # 取得するデータ項目
+        self.Want_Items = ["itemName", "itemPrice", "itemUrl", "url",  "shopName", "itemCaption", "postageFlag"]
+        self.MAX_PAGE = 1
 
-# リクエストを送る際のパラメータをdict型で書く
-req_params = {
-    'applicationId':'1072507588405161320',    # 楽天の開発者向けページで取得したアプリID
-    'format':'json',        # 
-    'formatVersion':'2',    # 
-    'keyword':'',           # 検索したい文字列を指定
-    'hits':HITS_PER_PAGE,   # 
-    'sort':'+itemPrice',    # 
-    'page':0,               # 取得するページ　->　ループを回すことで複数ページの商品情報取得可
-    'minPrice':100          # 
-}
+        # getでリクエストを送る際のパラメータ
+        self.req_params = {
+            "applicationId": "1072507588405161320",
+            "format":"json",
+            "formatVersion":"2",
+            "keyword":"",
+            "hits": 30,
+            "sort": "-reviewAverage",
+            "page": 0,
+            "NGKeyword" : "中古"
+        }
 
-def main():
+    # 検索データ取得
+    def get(self, *Jan_code:str):
+        result = dict()
+        for j in Jan_code:
+            # 正しいJANコードか判定
+            if len(j) != 8 and len(j) != 13:
+                result[j] = {"status": False}
+                continue
+            self.req_params['keyword'] = j
+            self.req_params['page'] = 1
 
-    #実行日日付フォルダ作成
-    if not os.path.isdir(path_output_dir):
-        os.mkdir(path_output_dir)
-
-    #商品記載テキストファイルからキーワード配列作成
-    with open('.\item.txt','r',encoding='utf-8') as f:
-        # 改行ごとに読み取る
-        item_info = list(map(str,f.read().split('\n')))
-
-    create_output_data(item_info)
-
-    print(f"{'-'*10}")
-
-# 出力データを作る関数
-def create_output_data(arg_item_info):
-
-    #キーワードループ
-    for keyword in arg_item_info:
-
-        #初期設定
-        count = 1
-        keyword = keyword.replace('\u3000',' ')
-        req_params['keyword'] = keyword
-        path_file = f'{path_output_dir}/{keyword}.csv'
-        df = pd.DataFrame(columns=WANT_ITEMS)
+            # APIを実行してreq_paramsのデータを取得
+            res = requests.get(self.REQUEST_URL, self.req_params)
+            response_code = res.status_code             # ステータスコード取得
+            data = res.json()                           # jsonにデコードする
+            if response_code != 200:
+                # エラー出力
+                print(f"ErrorCode --> {response_code}\nError --> {data['error']}")
+                break
+            minPrice = data["Items"][0]['itemPrice']
+            index = 0
+            for k in range(data["hits"]):
+                if data["Items"][k]['itemPrice'] < minPrice:
+                    minPrice = data["Items"][k]['itemPrice']
+                    index = k
+            result[j] = {
+                'name' : data["Items"][index]['itemName'],
+                'price' : data["Items"][index]['itemPrice'],
+                'url' : data["Items"][index]['itemUrl'],
+                'seller' : data["Items"][index]['shopName'],
+                'shipping' : data["Items"][index]['postageFlag']
+            }
+        return result
 
 
-        print(f"{'-'*10}\nNowSearchWord --> {keyword}")
+    # 楽天のデータ検索
+    # keywordは最大128文字の１バイト文字
+    def search(self, keyword: str):
+        result = list()
+        # 検索ワード
+        self.req_params['keyword'] = keyword
+        cnt = 1
 
         #ページループ
         while True:
-
-            req_params['page'] = count
-            response = requests.get(REQUEST_URL,req_params)
-            response_code = response.status_code
-            result = response.json()
+            self.req_params['page'] = cnt
+            # APIを実行してreq_paramsのデータを取得
+            res = requests.get(self.REQUEST_URL, self.req_params)
+            response_code = res.status_code             # ステータスコード取得
+            data = res.json()                           # jsonにデコードする
 
             if response_code != 200:
-                print(f"ErrorCode --> {response_code}\nError --> {result['error']}\nPage --> {count}")
-            else:
-
-                #返ってきた商品数の数が0の場合はループ終了
-                if result['hits'] == 0:
-                    break
-
-                tmp_df = pd.DataFrame(result['Items'])[WANT_ITEMS]
-                df = pd.concat([df,tmp_df],ignore_index=True)
-
-            if count == MAX_PAGE:
+                # エラー出力
+                print(f"ErrorCode --> {response_code}\nError --> {data['error']}")
                 break
+            index = 0
+            #返ってきた商品数の数が0の場合はループ終了
+            for k in range(data["hits"]):
+                if self.extract_JanCode(data["Items"][k]["itemCaption"])=="":
+                    continue
+                item = {
+                    'name' : data["Items"][k]['itemName'],
+                    'price' : data["Items"][k]['itemPrice'],
+                    'janCode': self.extract_JanCode(data["Items"][k]['itemCaption']),
+                    'url' : data["Items"][k]['itemUrl'],
+                    'image' : data["Items"][k]['mediumImageUrls'],
+                    'seller' : data["Items"][k]['shopName'],
+                    'shipping' : data["Items"][k]['postageFlag']
+                }
+                result.append(item)
 
-            count += 1
-
+            if cnt == self.MAX_PAGE:
+                break
+            cnt += 1
             #リクエスト制限回避
             sleep(1)
 
-        df.to_csv(path_file,index=False,encoding="utf_8_sig",sep=",")
-        print(f"Finished!!")
+        return result
+# 説明文の中に含まれるJANコードの抜き出し
+    def extract_JanCode(self, itemCaption :str):
+        idx = itemCaption.find('JAN')
+        pattern = list()
+        if idx != -1:
+            pattern = re.split('[:(/\■)【：】]', itemCaption[idx+1:idx+15])
+            for i in pattern:
+                # JANコードがあれば返り値で返す
+                if check_JAN(i):
+                    return i
+                else:
+                    continue
+        else:
+            return ""
+
+def check_JAN(jan_code: str):
+    length = len(jan_code)
+    if length == 8:
+        jan_code = "00000"+jan_code
+        length = len(jan_code)
+    if length == 13:
+        even = 0
+        odd = 0
+        for i in range(1, 12, 2):
+            even += int(jan_code[i])
+        even *= 3
+        for i in range(0, 12, 2):
+            odd += int(jan_code[i])
+        result = (odd+even) % 10
+        if str(10-result) == jan_code[12] or str(result) == jan_code[12]:
+            return True
+        else:
+            return False
 
 if __name__ == '__main__':
-    main()
+    # janCodes = list()
+    # while True:
+    #     code = input("{}番目のJANコードを入力してください: ".format(len(janCodes) + 1))
+    #     if code == "exit":
+    #         break
+    #     else:
+    #         janCodes.append(code)
+    # with open("config_rakuten.json", "r") as f:
+    #     config = json.load(f)
+    # rakuten = Rakuten(config["Rakuten_App_ID"])
+    # res = rakuten.search(*janCodes)
+
+    janCodes = input("入力してください:")
+
+    with open("config_rakuten.json", "r") as f:
+        config = json.load(f)
+    rakuten = Rakuten(config["Rakuten_App_ID"])
+    res = rakuten.search(janCodes)
+
+    with open("sample.json", "w") as f:
+        json.dump(res, f, ensure_ascii=False, indent=4)
+
+    print(res)
