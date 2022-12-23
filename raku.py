@@ -85,7 +85,6 @@ class Rakuten:
     # keywordは最大128文字の１バイト文字
     def search(self, keyword: str):
         # 検索ワード
-        keyword = keyword.replace('\u3000',' ')
         self.req_params_search['keyword'] = keyword
         cnt = 1
 
@@ -126,13 +125,18 @@ class Rakuten:
             sleep(1)
 
         return result
-
-    def extract_JanCode(itemUrl :str):
-        a = list()
-        a = itemUrl.split('/')
-        if a[4].isdigit():
-            if len(a[4]) == 8 or len(a[4]) == 13:
-                return a[4]
+# 説明文の中に含まれるJANコードの抜き出し
+    def extract_JanCode(itemCaption :str):
+        idx = itemCaption.find('JAN')
+        pattern = list()
+        if idx != -1:
+            pattern = re.split('[:(/\■)【：】]', itemCaption[idx+1:idx+30])
+            for i in pattern:
+                # JANコードがあれば返り値で返す
+                if :
+                    return i
+                else:
+                    return ""
         else:
             return ""
 
