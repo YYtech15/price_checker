@@ -5,7 +5,7 @@ RUN pip install --upgrade pip
 RUN pip install --upgrade setuptools
 
 RUN python -m pip install waitress pandas numpy 
-RUN python -m pip install flask pymysql dbutils bcrypt requests
+RUN python -m pip install flask pymysql dbutils bcrypt requests firebase_admin
 
 WORKDIR /app
 COPY . /app
