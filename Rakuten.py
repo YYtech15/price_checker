@@ -73,7 +73,7 @@ class Rakuten:
                 'seller': data["Items"][index]['shopName'],
                 'shipping': shippingFlag
             }
-            if len(janCodes) < 1:
+            if len(Jan_code) > 1:
                 sleep(1)
         return result
 
