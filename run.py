@@ -15,10 +15,11 @@ import datetime
 import json
 import threading
 from time import sleep
-from urllib.parse import quote,unquote
+from urllib.parse import quote, unquote
 
 # 自作モジュール
 from Yahoo import Yahoo
+from Rakuten import Rakuten
 from checkdigit import check_code
 
 app = Flask(__name__)
@@ -32,11 +33,14 @@ database_config["cursorclass"] = pymysql.cursors.DictCursor
 database = PooledDB(pymysql, 4, **database_config)
 
 yahoo = Yahoo(config["Yahoo_App_ID"])
+rakuten = Rakuten(config["Rakuten_App_ID"])
 
 cred = credentials.Certificate(config["GOOGLE_APPLICATION_CREDENTIALS"])
 default_app = firebase_admin.initialize_app(cred)
 
 # cors許可
+
+
 @app.after_request
 def after_request(response):
     if config["Access-Control-Allow-Origin"]:
@@ -60,12 +64,12 @@ def add_item():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    if not check_code(post_data["item_code"]):
-        return {"status": False, "msg": "not a number"}
     try:
         post_data = request.get_json()
-        sql = "INSERT INTO registerd_items(user_id,item_code) VALUES({},'{}')".format(
-            user_id, post_data["item_code"])
+        if not check_code(post_data["item_code"]):
+            return {"status": False, "msg": "not a number"}
+        sql = "INSERT INTO registerd_items(user_id,item_code,border_price) VALUES({},'{}')".format(
+            user_id, post_data["item_code"],post_data["border_price"])
         with database.connection().cursor() as cur:
             cur.execute(sql)
             sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}')".format(
@@ -118,7 +122,7 @@ def get_items():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
-    sql = """SELECT registerd_items.item_code,item_information.name,item_information.price,item_information.url,item_information.image,item_information.seller,item_information.shipping
+    sql = """SELECT registerd_items.item_code,registerd_items.border_price,item_information.name,item_information.price,item_information.url,item_information.image,item_information.seller,item_information.shipping
             FROM registerd_items
             LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
             WHERE registerd_items.user_id = {}""".format(user_id)
@@ -155,6 +159,9 @@ def search_items():
     keyword = request.args.get('q')
     if keyword:
         Y_data = yahoo.search(keyword)
+        R_data = rakuten.search(keyword)
+        print(Y_data, R_data)
+        Y_data.extend(R_data)
         return {"status": True, "items": Y_data}
     else:
         return {"status": False, "msg": "missing prameter"}
@@ -232,7 +239,7 @@ def check_login():
 #
 # Example response body
 # {"status": True}
-@ app.route("/token_register",methods=["POST"])
+@ app.route("/token_register", methods=["POST"])
 def token_register():
     user_id = check_header(request.headers)
     if not user_id:
@@ -334,11 +341,22 @@ class Crawler():
         cur = database.connection().cursor()
         cur.execute("SELECT item_code FROM item_information")
         data = cur.fetchall()
-        for d in data:
-            res = yahoo.get(d["item_code"])
+        code_Array = tuple(map(lambda x: x["item_code"],data))
+        Y_res = yahoo.get(*code_Array)
+        R_res = rakuten.get(*code_Array)
+        for item_code in code_Array:
+            if Y_res[item_code].get("status") and R_res[item_code].get("status"):
+                if Y_res[item_code]["price"] > R_res[item_code]["price"]:
+                    res = R_res
+                else:
+                    res = Y_res
+            elif Y_res[item_code].get("status"):
+                res = Y_res
+            elif R_res[item_code].get("status"):
+                res = R_res
             sql = """UPDATE item_information SET 
             name = '{name}',price={price},url='{url}',image='{image}',seller='{seller}',shipping='{shipping}'
-            where item_code={item_code}""".format(**res[d["item_code"]], **d)
+            where item_code={item_code}""".format(**res[item_code], **{"item_code":item_code})
             cur.execute(sql)
         cur.close()
 
@@ -354,10 +372,11 @@ class Crawler():
             sql = "SELECT device_token FROM message_token WHERE user_id={}".format(
                 item["user_id"])
             cur.execute(sql)
-            tokenArray = list(map(lambda x:x["device_token"],cur.fetchall()))
+            tokenArray = list(map(lambda x: x["device_token"], cur.fetchall()))
             message = messaging.MulticastMessage(notification=messaging.Notification(title=str(item["price"])+"円になりました。", body=item["name"], image=item["image"]), data={
-                                                "url": item["url"]}, webpush=messaging.WebpushConfig(fcm_options=messaging.WebpushFCMOptions(link="https://price-checker.db0.jp/j?url="+quote(item["url"], safe=""))), tokens=tokenArray)
-        messaging.send_multicast(message)
+                "url": item["url"]}, webpush=messaging.WebpushConfig(fcm_options=messaging.WebpushFCMOptions(link="https://price-checker.db0.jp/j?url="+quote(item["url"], safe=""))), tokens=tokenArray)
+            messaging.send_multicast(message)
+
 
 crawler = Crawler(60)
 if __name__ == "__main__":

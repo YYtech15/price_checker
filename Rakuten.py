@@ -51,13 +51,19 @@ class Rakuten:
                 if data["Items"][k]['itemPrice'] < minPrice:
                     minPrice = data["Items"][k]['itemPrice']
                     index = k
+            shippingFlag = "送料別"
+            if data["Items"][index]['postageFlag']:
+                shippingFlag="送料無料"
             result[j] = {
+                "status": True,
                 'name' : data["Items"][index]['itemName'],
                 'price' : data["Items"][index]['itemPrice'],
                 'url' : data["Items"][index]['itemUrl'],
+                'image' : data["Items"][index]['mediumImageUrls'][0],
                 'seller' : data["Items"][index]['shopName'],
-                'shipping' : data["Items"][index]['postageFlag']
+                'shipping' : shippingFlag
             }
+            sleep(1)
         return result
 
 
@@ -92,7 +98,7 @@ class Rakuten:
                     'price' : data["Items"][k]['itemPrice'],
                     'janCode': janCode,
                     'url' : data["Items"][k]['itemUrl'],
-                    'image' : data["Items"][k]['mediumImageUrls'],
+                    'image' : data["Items"][k]['mediumImageUrls'][0],
                     'seller' : data["Items"][k]['shopName'],
                     'shipping' : data["Items"][k]['postageFlag']
                 }
