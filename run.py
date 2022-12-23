@@ -349,7 +349,11 @@ class Crawler():
                 item["user_id"])
             cur.execute(sql)
             tokenArray = filter(lambda x: x["device_token"], cur.fetchall())
-
+            message = messaging.MulticastMessage(notification={
+                "title": item["name"],
+                "body": item["price"]
+            }, token=tokenArray)
+            messaging.send_multicast(message)
 
 crawler = Crawler(60)
 if __name__ == "__main__":
