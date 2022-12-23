@@ -234,7 +234,7 @@ def check_login():
 # {"status": True}
 @ app.route("/token_register",methods=["POST"])
 def token_register():
-    user_id = check_token(request.headers)
+    user_id = check_header(request.headers)
     if not user_id:
         return {"status": False}
     data = request.get_json()
