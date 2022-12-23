@@ -1,6 +1,7 @@
 # APIを叩く用 ： request
 import requests,json,re
 from time import sleep
+from checkdigit import check_code
 
 class Rakuten:
     def __init__(self, appId:str) -> None:
@@ -83,12 +84,12 @@ class Rakuten:
             index = 0
             #返ってきた商品数の数が0の場合はループ終了
             for k in range(data["hits"]):
-                if self.extract_JanCode(data["Items"][k]["itemCaption"])=="":
+                if extract_JanCode(data["Items"][k]["itemCaption"])=="":
                     continue
                 item = {
                     'name' : data["Items"][k]['itemName'],
                     'price' : data["Items"][k]['itemPrice'],
-                    'janCode': self.extract_JanCode(data["Items"][k]['itemCaption']),
+                    'janCode': extract_JanCode(data["Items"][k]['itemCaption']),
                     'url' : data["Items"][k]['itemUrl'],
                     'image' : data["Items"][k]['mediumImageUrls'],
                     'seller' : data["Items"][k]['shopName'],
@@ -104,38 +105,19 @@ class Rakuten:
 
         return result
 # 説明文の中に含まれるJANコードの抜き出し
-    def extract_JanCode(self, itemCaption :str):
-        idx = itemCaption.find('JAN')
-        pattern = list()
-        if idx != -1:
-            pattern = re.split('[:(/\■)【：】]', itemCaption[idx+1:idx+15])
-            for i in pattern:
-                # JANコードがあれば返り値で返す
-                if check_JAN(i):
-                    return i
-                else:
-                    continue
-        else:
-            return ""
-
-def check_JAN(jan_code: str):
-    length = len(jan_code)
-    if length == 8:
-        jan_code = "00000"+jan_code
-        length = len(jan_code)
-    if length == 13:
-        even = 0
-        odd = 0
-        for i in range(1, 12, 2):
-            even += int(jan_code[i])
-        even *= 3
-        for i in range(0, 12, 2):
-            odd += int(jan_code[i])
-        result = (odd+even) % 10
-        if str(10-result) == jan_code[12] or str(result) == jan_code[12]:
-            return True
-        else:
-            return False
+def extract_JanCode(self, itemCaption :str):
+    idx = itemCaption.find('JAN')
+    pattern = list()
+    if idx != -1:
+        pattern = re.split('[:(/\■)【：】]', itemCaption[idx+1:idx+15])
+        for i in pattern:
+            # JANコードがあれば返り値で返す
+            if check_code(i):
+                return i
+            else:
+                continue
+    else:
+        return ""
 
 if __name__ == '__main__':
     # janCodes = list()
