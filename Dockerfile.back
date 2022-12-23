@@ -1,0 +1,13 @@
+FROM python:3
+USER root
+
+RUN pip install --upgrade pip
+RUN pip install --upgrade setuptools
+
+RUN python -m pip install waitress pandas numpy 
+RUN python -m pip install flask pymysql dbutils bcrypt requests
+
+WORKDIR /app
+COPY . /app
+
+CMD ["python", "production.py"]

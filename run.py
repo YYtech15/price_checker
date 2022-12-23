@@ -39,6 +39,7 @@ default_app = firebase_admin.initialize_app()
 def after_request(response):
     if config["Access-Control-Allow-Origin"]:
         response.headers["Access-Control-Allow-Origin"] = config["Access-Control-Allow-Origin"]
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
     return response
 
 

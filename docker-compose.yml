@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  database:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./Dockerfile.db
+    volumes:
+      - "database-data:/var/lib/mysql"
+    networks:
+      - database_backend
+    environment:
+      TZ: "Asia/Tokyo"
+      MARIADB_RANDOM_ROOT_PASSWORD: "true"
+      MARIADB_USER: "price-checker"
+      MARIADB_PASSWORD: ${PC_DBPASS}
+      MARIADB_DATABASE: "price-checker"
+
+  backend:
+    restart: unless-stopped
+    depends_on:
+      - database
+    build:
+      context: .
+      dockerfile: ./Dockerfile.back
+    networks:
+      - backend_cloudflared
+      - backend_internet
+      - database_backend
+
+  cloudflared:
+    restart: unless-stopped
+    image: crazymax/cloudflared:2022.10.2
+    user: root
+    depends_on:
+      - backend
+    command: tunnel --hostname pc-api.db0.jp --url http://backend:9999 --name pc-api.db0.jp
+    volumes:
+      - /etc/cloudflared:/etc/cloudflared
+    networks:
+      - backend_cloudflared
+      - cloudflared_internet
+
+networks:
+  database_backend:
+    name: price_checker_api__database_backend
+    internal: true
+  backend_cloudflared:
+    name: price_checker_api__backend_cloudflared
+    internal: true
+  backend_internet:
+    name: price_checker_api__backend_internet
+  cloudflared_internet:
+    name: price_checker_api__cloudflared_internet
+
+volumes:
+  database-data: {}

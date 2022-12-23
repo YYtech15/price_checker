@@ -5,7 +5,6 @@ import numpy as np
 # APIを叩く用 ： request
 import requests,json,datetime,os,re
 from time import sleep
-from config import CLIENT_ME
 
 # リクエストするURL()
 REQUEST_URL = 'https://app.rakuten.co.jp/'\
