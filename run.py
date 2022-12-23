@@ -52,7 +52,12 @@ def after_request(response):
 # Example request body
 # {
 #    "item_code": <janCode:str>,
-#    "border_price": <border_price:int>
+#    "border_price": <border_price:int>,
+#    "name": <itemName:str>,
+#    "price": <price:int>,
+#    "seller": <seller:str,
+#    "shipping": <shipping:str>,
+#    "url": <url:str>,
 # }
 #
 # Example response body
@@ -72,9 +77,9 @@ def add_item():
             user_id, post_data["item_code"],post_data["border_price"])
         with database.connection().cursor() as cur:
             cur.execute(sql)
-            sql = "INSERT IGNORE INTO item_information(item_code) VALUES('{}')".format(
+            sql = "INSERT IGNORE INTO item_information VALUES(%s, %s, %s, %s, %s, %s, %s)".format(
                 post_data["item_code"])
-            cur.execute(sql)
+            cur.execute(sql, (post_data["item_code"], post_data["name"], post_data["price"], post_data["url"], post_data["image"], post_data["seller"], post_data["shipping"]))
         return {"status": True}
     except Exception as e:
         print(e)
@@ -381,4 +386,4 @@ class Crawler():
 crawler = Crawler(60)
 if __name__ == "__main__":
     crawler.start()
-    app.run(port=9002, debug=True)
+    app.run(port=9002, host='0.0.0.0', debug=True)
