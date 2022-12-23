@@ -1,5 +1,6 @@
 import requests
 import json
+from urllib.parse import quote,unquote
 
 
 
@@ -14,19 +15,12 @@ class Yahoo:
             if len(j) != 8 and len(j) != 13:
                 results[j] = {"status": False}
                 continue
-            url = "https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid={}&jan_code={}".format(
+            url = "https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid={}&sort=%2Bprice&results=1&condition=new&jan_code={}".format(
                 self.appId, j)
             r = requests.get(url)
             data = r.json()
 
-            min_price = data["hits"][0]["price"]
-            min_price_index = 0
-            for d in data["hits"]:
-                if d["price"] < min_price:
-                    min_price = d["price"]
-                    min_price_index = d["index"]-1
-
-            d = data["hits"][min_price_index]
+            d = data["hits"][0]
 
             results[j] = {
                 "status": True,

@@ -232,9 +232,9 @@ def check_login():
 #
 # Example response body
 # {"status": True}
-@ app.route("/token_register")
+@ app.route("/token_register",methods=["POST"])
 def token_register():
-    user_id = check_token(request.headers)
+    user_id = check_header(request.headers)
     if not user_id:
         return {"status": False}
     data = request.get_json()
@@ -322,6 +322,7 @@ class Crawler():
         while not self.end_flag:
             if (self.previous_time < datetime.datetime.today()):
                 self.update()
+                self.notice()
                 self.previous_time = datetime.datetime.today(
                 )+datetime.timedelta(minutes=self.Interval)
             for i in range(30):

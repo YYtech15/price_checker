@@ -27,6 +27,7 @@ ENGINE=InnoDB
 CREATE TABLE `registerd_items` (
 	`user_id` INT(11) UNSIGNED NOT NULL,
 	`item_code` TINYTEXT NOT NULL COLLATE 'utf8mb4_general_ci',
+	`border_price` INT(11) NOT NULL,
 	UNIQUE INDEX `user_id_item_code` (`user_id`, `item_code`) USING HASH,
 	INDEX `FK__user` (`user_id`) USING BTREE,
 	CONSTRAINT `FK__user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
