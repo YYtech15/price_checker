@@ -322,6 +322,7 @@ class Crawler():
         while not self.end_flag:
             if (self.previous_time < datetime.datetime.today()):
                 self.update()
+                self.notice()
                 self.previous_time = datetime.datetime.today(
                 )+datetime.timedelta(minutes=self.Interval)
             for i in range(30):
