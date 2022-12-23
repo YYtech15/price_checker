@@ -63,6 +63,7 @@ class Rakuten:
     # 楽天のデータ検索
     # keywordは最大128文字の１バイト文字
     def search(self, keyword: str):
+        result = list()
         # 検索ワード
         self.req_params['keyword'] = keyword
         cnt = 1
@@ -74,27 +75,24 @@ class Rakuten:
             res = requests.get(self.REQUEST_URL, self.req_params)
             response_code = res.status_code             # ステータスコード取得
             data = res.json()                           # jsonにデコードする
-            result = list()
 
             if response_code != 200:
                 # エラー出力
                 print(f"ErrorCode --> {response_code}\nError --> {data['error']}")
                 break
-            else:
-                #返ってきた商品数の数が0の場合はループ終了
-                if res['hits'] == 0:
-                    break
-
-                if self.extract_JanCode(data["itemCaption"])=="":
+            index = 0
+            #返ってきた商品数の数が0の場合はループ終了
+            for k in range(data["hits"]):
+                if self.extract_JanCode(data["Items"][k]["itemCaption"])=="":
                     continue
                 item = {
-                    'name' : data['itemName'],
-                    'price' : data['itemPrice'],
-                    'janCode': self.extract_JanCode(data['itemCaption']),
-                    'url' : data['itemUrl'],
-                    'image' : data['mediumImageUrls'],
-                    'seller' : data['shopName'],
-                    'shipping' : data['postageFlag']
+                    'name' : data["Items"][k]['itemName'],
+                    'price' : data["Items"][k]['itemPrice'],
+                    'janCode': self.extract_JanCode(data["Items"][k]['itemCaption']),
+                    'url' : data["Items"][k]['itemUrl'],
+                    'image' : data["Items"][k]['mediumImageUrls'],
+                    'seller' : data["Items"][k]['shopName'],
+                    'shipping' : data["Items"][k]['postageFlag']
                 }
                 result.append(item)
 
@@ -106,34 +104,58 @@ class Rakuten:
 
         return result
 # 説明文の中に含まれるJANコードの抜き出し
-    def extract_JanCode(itemCaption :str):
+    def extract_JanCode(self, itemCaption :str):
         idx = itemCaption.find('JAN')
         pattern = list()
         if idx != -1:
-            pattern = re.split('[:(/\■)【：】]', itemCaption[idx+1:idx+30])
-            # for i in pattern:
-            #     # JANコードがあれば返り値で返す
-            #     if :
-            #         return i
-            #     else:
-            #         return ""
+            pattern = re.split('[:(/\■)【：】]', itemCaption[idx+1:idx+15])
+            for i in pattern:
+                # JANコードがあれば返り値で返す
+                if check_JAN(i):
+                    return i
+                else:
+                    continue
         else:
             return ""
 
+def check_JAN(jan_code: str):
+    length = len(jan_code)
+    if length == 8:
+        jan_code = "00000"+jan_code
+        length = len(jan_code)
+    if length == 13:
+        even = 0
+        odd = 0
+        for i in range(1, 12, 2):
+            even += int(jan_code[i])
+        even *= 3
+        for i in range(0, 12, 2):
+            odd += int(jan_code[i])
+        result = (odd+even) % 10
+        if str(10-result) == jan_code[12] or str(result) == jan_code[12]:
+            return True
+        else:
+            return False
 
 if __name__ == '__main__':
-    janCodes = list()
-    while True:
-        code = input("{}番目のJANコードを入力してください: ".format(len(janCodes) + 1))
-        if code == "exit":
-            break
-        else:
-            janCodes.append(code)
+    # janCodes = list()
+    # while True:
+    #     code = input("{}番目のJANコードを入力してください: ".format(len(janCodes) + 1))
+    #     if code == "exit":
+    #         break
+    #     else:
+    #         janCodes.append(code)
+    # with open("config_rakuten.json", "r") as f:
+    #     config = json.load(f)
+    # rakuten = Rakuten(config["Rakuten_App_ID"])
+    # res = rakuten.search(*janCodes)
+
+    janCodes = input("入力してください:")
 
     with open("config_rakuten.json", "r") as f:
         config = json.load(f)
     rakuten = Rakuten(config["Rakuten_App_ID"])
-    res = rakuten.get(*janCodes)
+    res = rakuten.search(janCodes)
 
     with open("sample.json", "w") as f:
         json.dump(res, f, ensure_ascii=False, indent=4)
