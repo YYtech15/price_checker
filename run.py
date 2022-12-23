@@ -337,9 +337,12 @@ class Crawler():
                 if self.end_flag:
                     break
 
-    def update(self):
+    def update(self,null_only=False):
         cur = database.connection().cursor()
-        cur.execute("SELECT item_code FROM item_information")
+        if null_only:
+            cur.execute("SELECT item_code FROM item_information WHERE price IS null")
+        else:
+            cur.execute("SELECT item_code FROM item_information")
         data = cur.fetchall()
         code_Array = tuple(map(lambda x: x["item_code"],data))
         Y_res = yahoo.get(*code_Array)
