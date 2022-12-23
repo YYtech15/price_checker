@@ -105,6 +105,9 @@ class Rakuten:
                 janCode = extract_JanCode(data["Items"][k]["itemCaption"])
                 if not janCode:
                     continue
+                shippingFlag = "送料別"
+                if data["Items"][index]['postageFlag']:
+                    shippingFlag = "送料無料"
                 item = {
                     'name': data["Items"][k]['itemName'],
                     'price': data["Items"][k]['itemPrice'],
@@ -112,7 +115,7 @@ class Rakuten:
                     'url': data["Items"][k]['itemUrl'],
                     'image': data["Items"][k]['mediumImageUrls'][0],
                     'seller': data["Items"][k]['shopName'],
-                    'shipping': data["Items"][k]['postageFlag']
+                    'shipping': shippingFlag
                 }
                 result.append(item)
 
