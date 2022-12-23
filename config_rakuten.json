@@ -1,0 +1,22 @@
+{
+    "Rakuten_App_ID" : "1072507588405161320",
+    "Want_Items" : ["itemName", "itemPrice", "itemUrl", "url",  "shopName", "itemCaption", "postageFlag"],
+    "req_params_get" : [{
+        "applicationId": "1072507588405161320",
+        "format":"json",
+        "formatVersion":"2",
+        "keyword":"",
+        "hits": 30,
+        "sort":"+itemPrice",
+        "page":0
+    }],
+    "req_params_search" : [{
+        "applicationId": "1072507588405161320",
+        "format":"json",
+        "formatVersion":"2",
+        "keyword":"",
+        "hits": 30,
+        "sort":"-reviewAverage",
+        "page":0
+    }]
+}
