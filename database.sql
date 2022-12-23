@@ -47,3 +47,13 @@ CREATE TABLE `item_information` (
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB
 ;
+CREATE TABLE `message_token` (
+	`user_id` INT(10) UNSIGNED NOT NULL,
+	`device_token` TINYTEXT NOT NULL COLLATE 'utf8mb4_general_ci',
+	UNIQUE INDEX `device_token` (`device_token`) USING HASH,
+	INDEX `FK__user2` (`user_id`) USING BTREE,
+	CONSTRAINT `FK__user2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+)
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB
+;
