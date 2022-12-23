@@ -238,7 +238,7 @@ def token_register():
     if not user_id:
         return {"status": False}
     data = request.get_json()
-    sql = "INSERT INTO message_token VALUES({},'{}')".format(
+    sql = "INSERT IGNORE INTO message_token VALUES({},'{}')".format(
         user_id, data["device_token"])
     with database.connection().cursor() as cur:
         cur.execute(sql)
