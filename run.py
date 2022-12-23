@@ -232,7 +232,7 @@ def check_login():
 #
 # Example response body
 # {"status": True}
-@ app.route("/token_register")
+@ app.route("/token_register",methods=["POST"])
 def token_register():
     user_id = check_token(request.headers)
     if not user_id:
