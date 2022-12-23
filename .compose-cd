@@ -1,0 +1,4 @@
+REPO="https://github.com/YYtech15/price_checker.git"
+UPDATE_REPO_ONLY="true"
+UPDATE_IMAGE_BY_REPO="true"
+RESTART_WITH_BUILD="true"
