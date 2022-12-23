@@ -15,9 +15,11 @@ import datetime
 import json
 import threading
 from time import sleep
+from urllib.parse import quote,unquote
 
 # 自作モジュール
 from Yahoo import Yahoo
+from checkdigit import check_code
 
 app = Flask(__name__)
 
@@ -32,7 +34,7 @@ database = PooledDB(pymysql, 4, **database_config)
 yahoo = Yahoo(config["Yahoo_App_ID"])
 
 cred = credentials.Certificate(config["GOOGLE_APPLICATION_CREDENTIALS"])
-default_app = firebase_admin.initialize_app()
+default_app = firebase_admin.initialize_app(cred)
 
 # cors許可
 @app.after_request
@@ -58,6 +60,8 @@ def add_item():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
+    if not check_code(post_data["item_code"]):
+        return {"status": False, "msg": "not a number"}
     try:
         post_data = request.get_json()
         sql = "INSERT INTO registerd_items(user_id,item_code) VALUES({},'{}')".format(
@@ -339,7 +343,7 @@ class Crawler():
 
     def notice(self):
         cur = database.connection().cursor()
-        sql = """SELECT registerd_items.user_id,item_information.name,item_information.price,item_information.url
+        sql = """SELECT registerd_items.user_id,item_information.name,item_information.price,item_information.url,item_information.image
                 FROM registerd_items
                 LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
                 WHERE registerd_items.border_price >= item_information.price"""
@@ -349,8 +353,10 @@ class Crawler():
             sql = "SELECT device_token FROM message_token WHERE user_id={}".format(
                 item["user_id"])
             cur.execute(sql)
-            tokenArray = filter(lambda x: x["device_token"], cur.fetchall())
-
+        tokenArray = list(map(lambda x:x["device_token"],cur.fetchall()))
+        message = messaging.MulticastMessage(notification=messaging.Notification(title=str(item["price"])+"円になりました。", body=item["name"], image=item["image"]), data={
+                                             "url": item["url"]}, webpush=messaging.WebpushConfig(fcm_options=messaging.WebpushFCMOptions(link="https://price-checker.db0.jp/j?url="+quote(item["url"], safe=""))), tokens=tokenArray)
+        messaging.send_multicast(message)
 
 crawler = Crawler(60)
 if __name__ == "__main__":
