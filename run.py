@@ -381,4 +381,4 @@ class Crawler():
 crawler = Crawler(60)
 if __name__ == "__main__":
     crawler.start()
-    app.run(port=9002, debug=True)
+    app.run(port=9002, host='0.0.0.0', debug=True)
