@@ -32,7 +32,7 @@ database = PooledDB(pymysql, 4, **database_config)
 yahoo = Yahoo(config["Yahoo_App_ID"])
 
 cred = credentials.Certificate(config["GOOGLE_APPLICATION_CREDENTIALS"])
-default_app = firebase_admin.initialize_app()
+default_app = firebase_admin.initialize_app(cred)
 
 # cors許可
 @app.after_request
@@ -339,7 +339,7 @@ class Crawler():
 
     def notice(self):
         cur = database.connection().cursor()
-        sql = """SELECT registerd_items.user_id,item_information.name,item_information.price,item_information.url
+        sql = """SELECT registerd_items.user_id,item_information.name,item_information.price,item_information.url,item_information.image
                 FROM registerd_items
                 LEFT JOIN item_information ON registerd_items.item_code = item_information.item_code
                 WHERE registerd_items.border_price >= item_information.price"""
@@ -349,12 +349,9 @@ class Crawler():
             sql = "SELECT device_token FROM message_token WHERE user_id={}".format(
                 item["user_id"])
             cur.execute(sql)
-            tokenArray = filter(lambda x: x["device_token"], cur.fetchall())
-            message = messaging.MulticastMessage(notification={
-                "title": item["name"],
-                "body": item["price"]
-            }, token=tokenArray)
-            messaging.send_multicast(message)
+        tokenArray = list(map(lambda x:x["device_token"],cur.fetchall()))
+        message = messaging.MulticastMessage(notification=messaging.Notification(title=item["name"],body=str(item["price"]),image=item["image"]),tokens=tokenArray)
+        messaging.send_multicast(message)
 
 crawler = Crawler(60)
 if __name__ == "__main__":
