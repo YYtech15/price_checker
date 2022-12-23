@@ -84,12 +84,13 @@ class Rakuten:
             index = 0
             #返ってきた商品数の数が0の場合はループ終了
             for k in range(data["hits"]):
-                if extract_JanCode(data["Items"][k]["itemCaption"])=="":
+                janCode = extract_JanCode(data["Items"][k]["itemCaption"])
+                if not janCode:
                     continue
                 item = {
                     'name' : data["Items"][k]['itemName'],
                     'price' : data["Items"][k]['itemPrice'],
-                    'janCode': extract_JanCode(data["Items"][k]['itemCaption']),
+                    'janCode': janCode,
                     'url' : data["Items"][k]['itemUrl'],
                     'image' : data["Items"][k]['mediumImageUrls'],
                     'seller' : data["Items"][k]['shopName'],
@@ -104,20 +105,20 @@ class Rakuten:
             sleep(1)
 
         return result
+
+
 # 説明文の中に含まれるJANコードの抜き出し
+number = re.compile(r"\d{8,13}")
 def extract_JanCode(itemCaption :str):
-    idx = itemCaption.find('JAN')
-    pattern = list()
-    if idx != -1:
-        pattern = re.split('[:(/\■)【：】]', itemCaption[idx+1:idx+15])
-        for i in pattern:
-            # JANコードがあれば返り値で返す
-            if check_code(i):
-                return i
-            else:
-                continue
+    r = number.search(itemCaption)
+    if not r:
+        return False
     else:
-        return ""
+        n = r.group()
+        if check_code(n):
+            return n
+        else:
+            return False
 
 if __name__ == '__main__':
     # janCodes = list()
@@ -134,12 +135,12 @@ if __name__ == '__main__':
 
     janCodes = input("入力してください:")
 
-    with open("config_rakuten.json", "r") as f:
+    with open("config.json", "r") as f:
         config = json.load(f)
     rakuten = Rakuten(config["Rakuten_App_ID"])
     res = rakuten.search(janCodes)
 
-    with open("sample.json", "w") as f:
+    with open("example.json", "w") as f:
         json.dump(res, f, ensure_ascii=False, indent=4)
 
     print(res)
