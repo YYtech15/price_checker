@@ -15,6 +15,7 @@ import datetime
 import json
 import threading
 from time import sleep
+from urllib.parse import quote,unquote
 
 # 自作モジュール
 from Yahoo import Yahoo
@@ -353,7 +354,8 @@ class Crawler():
                 item["user_id"])
             cur.execute(sql)
         tokenArray = list(map(lambda x:x["device_token"],cur.fetchall()))
-        message = messaging.MulticastMessage(notification=messaging.Notification(title=item["name"],body=str(item["price"]),image=item["image"]),tokens=tokenArray)
+        message = messaging.MulticastMessage(notification=messaging.Notification(title=str(item["price"])+"円になりました。", body=item["name"], image=item["image"]), data={
+                                             "url": item["url"]}, webpush=messaging.WebpushConfig(fcm_options=messaging.WebpushFCMOptions(link="https://price-checker.db0.jp/j?url="+quote(item["url"], safe=""))), tokens=tokenArray)
         messaging.send_multicast(message)
 
 crawler = Crawler(60)
