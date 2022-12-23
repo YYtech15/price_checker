@@ -105,7 +105,7 @@ class Rakuten:
 
         return result
 # 説明文の中に含まれるJANコードの抜き出し
-def extract_JanCode(self, itemCaption :str):
+def extract_JanCode(itemCaption :str):
     idx = itemCaption.find('JAN')
     pattern = list()
     if idx != -1:
