@@ -18,6 +18,7 @@ from time import sleep
 
 # 自作モジュール
 from Yahoo import Yahoo
+from checkdigit import check_code
 
 app = Flask(__name__)
 
@@ -58,6 +59,8 @@ def add_item():
     user_id = check_header(request.headers)
     if not user_id:
         return {"status": False, "msg": "need login"}
+    if not check_code(post_data["item_code"]):
+        return {"status": False, "msg": "not a number"}
     try:
         post_data = request.get_json()
         sql = "INSERT INTO registerd_items(user_id,item_code) VALUES({},'{}')".format(
